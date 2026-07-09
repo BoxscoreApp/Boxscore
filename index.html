@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boxscore — Rate the games you watch</title>
+<meta name="description" content="Boxscore is where fans rate and rank the games they watch. Log a game, score it out of 100, see what the crowd thinks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,650;1,9..144,600&family=Figtree:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script data-goatcounter="https://boxscoreapp.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<style>
+:root{
+  --paper:#EEF0EC; --card:#FFFFFF; --ink:#14201A; --muted:#5C6B62;
+  --line:#CBD2CB; --turf:#1E7A46; --turf-deep:#155C34;
+  --chip:#0F1613; --amber:#FFB020; --amber-dim:#8a6a2a;
+  --danger:#B3402E;
+  --radius:14px;
+  --mono:"DM Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --disp:"Fraunces", Georgia, "Times New Roman", serif;
+  --body:"Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+[data-theme="dark"]{
+  --paper:#0E1512; --card:#17211B; --ink:#E9EEE9; --muted:#93A399;
+  --line:#2A362E; --turf:#3FA76B; --turf-deep:#2E7C4F;
+  --chip:#0A0F0C; --amber:#FFC24D;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ *{transition:none!important; animation:none!important} }
+body{background:var(--paper); color:var(--ink); font-family:var(--body); line-height:1.5; min-height:100vh}
+button{font:inherit; cursor:pointer; border:none; background:none; color:inherit}
+input,select,textarea{font:inherit; color:inherit}
+a{color:var(--turf)}
+
+/* ---------- header ---------- */
+header{position:sticky; top:0; z-index:20; background:var(--paper); border-bottom:2px solid var(--ink)}
+.hwrap{max-width:960px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; gap:14px}
+.logo{font-family:var(--disp); font-style:italic; font-weight:650; font-size:22px; letter-spacing:.2px; display:flex; align-items:center; gap:8px}
+.logo .dot{width:10px; height:10px; background:var(--turf); border-radius:50%; box-shadow:0 0 8px var(--turf)}
+nav{display:flex; gap:2px; margin-left:auto}
+.tab{padding:7px 13px; font-size:14px; font-weight:600; color:var(--muted); border-radius:999px}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{background:var(--ink); color:var(--paper)}
+.tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--turf); outline-offset:2px}
+.iconbtn{font-size:16px; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--card)}
+
+/* ---------- mobile ---------- */
+@media(max-width:640px){
+  .hwrap{flex-wrap:wrap; padding:10px 12px; gap:6px}
+  .logo{font-size:19px}
+  #themeBtn{margin-left:auto}
+  nav{order:3; width:100%; margin-left:0; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap; font-size:13px; padding:6px 11px}
+  main{padding:18px 12px 70px}
+  .card,.rankrow{padding:13px}
+  .rank{width:30px; font-size:19px}
+  .chip{min-width:58px}
+  .chip .n{font-size:22px}
+  h1{font-size:28px}
+}
+
+/* ---------- layout ---------- */
+main{max-width:960px; margin:0 auto; padding:24px 16px 80px}
+.view{display:none}
+.view.active{display:block}
+.eyebrow{font-size:14px; font-weight:500; font-style:italic; font-family:var(--disp); color:var(--turf); margin-bottom:6px}
+h1{font-family:var(--disp); font-weight:650; font-size:clamp(30px,5vw,44px); line-height:1.08; letter-spacing:-.5px; margin-bottom:8px}
+.sub{color:var(--muted); max-width:52ch; margin-bottom:22px}
+
+/* ---------- scoreboard chip (signature) ---------- */
+.chip{display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+  background:var(--chip); border-radius:8px; padding:8px 10px 6px; min-width:66px;
+  border:1px solid #000; box-shadow:inset 0 0 0 1px rgba(255,176,32,.15)}
+.chip .n{font-family:var(--mono); font-size:26px; font-weight:500; color:var(--amber); line-height:1;
+  text-shadow:0 0 10px rgba(255,176,32,.55)}
+.chip.good .n{color:#4CE087; text-shadow:0 0 10px rgba(76,224,135,.55)}
+.chip.bad .n{color:#FF6257; text-shadow:0 0 10px rgba(255,98,87,.55)}
+.chip .l{font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--amber-dim); text-transform:uppercase; margin-top:3px}
+.chip.sm{min-width:54px; padding:6px 8px 5px}
+.chip.sm .n{font-size:20px}
+
+/* ---------- cards ---------- */
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:12px;
+  display:flex; gap:14px; align-items:flex-start}
+.card .body{flex:1; min-width:0}
+.matchup{font-family:var(--disp); font-weight:650; font-size:18px; line-height:1.25}
+.meta{font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:2px}
+.review{margin-top:8px; font-size:14px}
+.tags{margin-top:8px; display:flex; flex-wrap:wrap; gap:6px}
+.tag{font-family:var(--mono); font-size:11px; letter-spacing:.5px; padding:2px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted)}
+.tag.hot{border-color:var(--amber); color:var(--amber)}
+.byline{font-size:12px; color:var(--muted); margin-top:8px}
+.cardactions{margin-top:10px; display:flex; gap:8px}
+.linkbtn{font-size:13px; font-weight:600; color:var(--turf)}
+.linkbtn.danger{color:var(--danger)}
+
+/* ---------- rankings ---------- */
+.rankrow{display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--line);
+  border-radius:var(--radius); padding:12px 16px; margin-bottom:8px}
+.rank{font-family:var(--disp); font-style:italic; font-weight:650; font-size:24px; width:44px; color:var(--muted); flex-shrink:0}
+.rankrow:nth-child(1) .rank,.rankrow:nth-child(2) .rank,.rankrow:nth-child(3) .rank{color:var(--turf)}
+.rankrow .body{flex:1; min-width:0}
+.votes{font-family:var(--mono); font-size:11px; color:var(--muted)}
+
+/* ---------- filter bar ---------- */
+.filters{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px}
+.fbtn{font-family:var(--mono); font-size:12px; padding:5px 12px; border:1px solid var(--line); border-radius:999px; color:var(--muted); background:var(--card)}
+.fbtn[aria-pressed="true"]{background:var(--turf); border-color:var(--turf); color:#fff}
+
+/* ---------- form ---------- */
+form .field{margin-bottom:16px}
+label{display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:6px}
+input[type=text],input[type=date],select{width:100%; height:46px; padding:0 14px; background:var(--card); border:1px solid var(--line); border-radius:10px;
+  appearance:none; -webkit-appearance:none; font-size:16px}
+textarea{width:100%; padding:11px 14px; background:var(--card); border:1px solid var(--line); border-radius:10px; font-size:16px}
+select{background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237a8a80' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 14px center; padding-right:38px}
+input[type=date]{display:flex; align-items:center}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
+textarea{resize:vertical; min-height:70px}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+@media(max-width:560px){.row2{grid-template-columns:1fr}}
+.ratingbox{display:flex; align-items:center; gap:18px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px}
+input[type=range]{flex:1; accent-color:var(--turf)}
+.chip.big{min-width:84px}
+.chip.big .n{font-size:38px}
+.tagpick{display:flex; flex-wrap:wrap; gap:8px}
+.tagpick .fbtn[aria-pressed="true"]{background:var(--ink); border-color:var(--ink)}
+.primary{background:var(--turf); color:#fff; font-weight:600;
+  padding:12px 26px; border-radius:999px; font-size:15px}
+.primary:hover{background:var(--turf-deep)}
+.ghost{border:1px solid var(--line); padding:11px 18px; border-radius:8px; font-size:13px; background:var(--card)}
+.formfoot{display:flex; gap:10px; align-items:center; margin-top:8px}
+
+/* ---------- finder ---------- */
+.finder{margin-bottom:20px}
+.gres{display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:10px 12px; border:1px solid var(--line);
+  border-radius:10px; margin-bottom:6px; background:var(--paper)}
+.gres:hover{border-color:var(--turf)}
+.gres .m{font-weight:600; flex:1}
+.gres .s{font-family:var(--mono); font-size:13px; color:var(--muted); white-space:nowrap}
+.finderr{font-size:13px; color:var(--muted); padding:8px 2px}
+
+/* ---------- misc ---------- */
+.empty{border:1px dashed var(--line); border-radius:var(--radius); padding:36px 20px; text-align:center; color:var(--muted)}
+.toolrow{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap}
+.toast{position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--ink); color:var(--paper);
+  padding:10px 20px; border-radius:8px; font-size:14px; font-weight:600; transition:transform .25s; z-index:50}
+.toast.show{transform:translateX(-50%) translateY(0)}
+footer{border-top:1px solid var(--line); margin-top:40px; padding-top:16px; font-family:var(--mono); font-size:11px; color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <div class="logo"><span class="dot"></span>Boxscore</div>
+    <nav role="tablist" aria-label="Sections">
+      <button class="tab" role="tab" data-view="feed" aria-selected="true">Feed</button>
+      <button class="tab" role="tab" data-view="today" aria-selected="false">Today</button>
+      <button class="tab" role="tab" data-view="rankings" aria-selected="false">Rankings</button>
+      <button class="tab" role="tab" data-view="log" aria-selected="false">My Log</button>
+      <button class="tab" role="tab" data-view="rate" aria-selected="false">+ Rate a Game</button>
+    </nav>
+    <button class="iconbtn" id="themeBtn" aria-label="Toggle dark mode">◐</button>
+  </div>
+</header>
+
+<main>
+  <!-- FEED -->
+  <section class="view active" id="view-feed">
+    <p class="eyebrow">Latest whistle-to-whistle verdicts</p>
+    <h1>Was it worth the watch?</h1>
+    <p class="sub">Boxscore is where fans score the games they watch — 0 to 100 — and see how the crowd ranks them. Log a game to add your verdict.</p>
+    <div class="filters" id="feedFilters"></div>
+    <div id="feedList"></div>
+  </section>
+
+  <!-- TODAY -->
+  <section class="view" id="view-today">
+    <p class="eyebrow">Fresh off the broadcast</p>
+    <h1>Today's Games</h1>
+    <p class="sub">The day's slate, straight from the scoreboard. Just watched one? Hit Rate and give your verdict while it's hot.</p>
+    <div class="filters" id="todayLeagues"></div>
+    <div class="toolrow" style="align-items:center">
+      <label for="todayDate" style="margin:0">Date</label>
+      <input type="date" id="todayDate" style="width:auto">
+    </div>
+    <div id="todayList"></div>
+  </section>
+
+  <!-- RANKINGS -->
+  <section class="view" id="view-rankings">
+    <p class="eyebrow">Crowd-ranked, all sports</p>
+    <h1>The Table</h1>
+    <p class="sub">Every rated game, ranked by average crowd score. Your ratings count toward the average.</p>
+    <div class="filters" id="rankFilters"></div>
+    <div id="rankList"></div>
+  </section>
+
+  <!-- MY LOG -->
+  <section class="view" id="view-log">
+    <p class="eyebrow">Your personal record</p>
+    <h1>My Log</h1>
+    <p class="sub">Everything you've rated, newest first. Export it as JSON to back it up or move devices.</p>
+
+    <div class="card" style="display:block; margin-bottom:18px">
+      <div class="matchup" style="margin-bottom:4px">Favorite teams</div>
+      <p class="meta" style="margin-bottom:12px">Your teams get a ★ across the app, and the feed has a "My teams" filter.</p>
+      <div class="tags" id="favChips" style="margin-bottom:10px"></div>
+      <div style="display:flex; gap:8px">
+        <input type="text" id="favInput" placeholder="e.g. Giants, Arsenal, Knicks…" maxlength="40" style="flex:1">
+        <button type="button" class="ghost" id="favAdd">Add</button>
+      </div>
+    </div>
+
+    <div class="toolrow">
+      <button class="ghost" id="exportBtn">Export JSON</button>
+      <button class="ghost" id="importBtn">Import JSON</button>
+      <input type="file" id="importFile" accept=".json" hidden>
+    </div>
+    <div id="myList"></div>
+  </section>
+
+  <!-- RATE -->
+  <section class="view" id="view-rate">
+    <p class="eyebrow">Add your verdict</p>
+    <h1 id="rateTitle">Rate a Game</h1>
+    <p class="sub">Score the game itself — the drama, the stakes, the finish — not just whether your team won.</p>
+
+    <div class="finder card" style="display:block">
+      <div class="matchup" style="margin-bottom:4px">Find the game</div>
+      <p class="meta" style="margin-bottom:12px">Pick a league and date — we'll pull the scoreboard so you don't have to type it out.</p>
+      <div class="row2">
+        <div class="field">
+          <label for="finderLeague">League</label>
+          <select id="finderLeague"></select>
+        </div>
+        <div class="field">
+          <label for="finderDate">Game date</label>
+          <input type="date" id="finderDate">
+        </div>
+      </div>
+      <button type="button" class="ghost" id="finderBtn">Search games</button>
+      <div id="finderResults" style="margin-top:12px"></div>
+    </div>
+
+    <form id="rateForm">
+      <div class="row2">
+        <div class="field">
+          <label for="fSport">Sport</label>
+          <select id="fSport" required>
+            <option value="Football">Football (NFL/College)</option>
+            <option value="Soccer">Soccer</option>
+            <option value="Basketball">Basketball</option>
+            <option value="Baseball">Baseball</option>
+            <option value="Hockey">Hockey</option>
+            <option value="Tennis">Tennis</option>
+            <option value="MMA/Boxing">MMA / Boxing</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fDate">Date played</label>
+          <input type="date" id="fDate" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="fMatchup">Matchup / event</label>
+        <input type="text" id="fMatchup" placeholder="e.g. Chiefs vs 49ers — Super Bowl LVIII" required maxlength="90">
+      </div>
+      <div class="field">
+        <label for="fScore">Final score <span style="font-weight:400">(optional)</span></label>
+        <input type="text" id="fScore" placeholder="e.g. 25–22 (OT)" maxlength="40">
+      </div>
+      <div class="field">
+        <label for="fRating">Your score</label>
+        <div class="ratingbox">
+          <div class="chip big good" id="bigChip"><span class="n" id="ratingNum">75</span><span class="l">PTS</span></div>
+          <input type="range" id="fRating" min="0" max="100" value="75" aria-label="Rating from 0 to 100">
+        </div>
+      </div>
+      <div class="field">
+        <label>Tags</label>
+        <div class="tagpick" id="tagPick"></div>
+      </div>
+      <div class="field">
+        <label for="fReview">One-liner <span style="font-weight:400">(optional)</span></label>
+        <textarea id="fReview" placeholder="Your quick take — why that score?" maxlength="280"></textarea>
+      </div>
+      <div class="formfoot">
+        <button type="submit" class="primary">Post rating</button>
+        <button type="button" class="ghost" id="cancelEdit" hidden>Cancel edit</button>
+      </div>
+    </form>
+  </section>
+
+  <footer>BOXSCORE · MVP v0.9.3 · Data lives in your browser (localStorage). Nothing is sent to a server yet.
+    <br><br><a href="https://forms.gle/7qw8BFdvUvGVKior8" target="_blank" rel="noopener" id="fbLink" style="font-weight:600">Give feedback →</a>
+  </footer>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+"use strict";
+const LS_KEY = "boxscore_v1";
+const TAGS = ["Instant Classic","Thriller","Upset","Comeback","Blowout","Defensive Battle","Snoozer"];
+const SPORTS = ["All","Football","Soccer","Basketball","Baseball","Hockey","Tennis","MMA/Boxing","Other"];
+
+/* ---------- seed community data (fictional handles, real famous games) ---------- */
+const SEED = [
+ g("c1","Football","Chiefs vs 49ers — Super Bowl LVIII","2024-02-11","25–22 (OT)",88,4210,"@grid_iron","Walk-off in overtime on the biggest stage. Hard to top.",["Instant Classic","Thriller"]),
+ g("c2","Soccer","Argentina vs France — 2022 World Cup Final","2022-12-18","3–3 (4–2 pens)",97,9822,"@touchline","The best final ever played. Every act had a twist.",["Instant Classic","Comeback","Thriller"]),
+ g("c3","Basketball","Cavs vs Warriors — 2016 Finals Game 7","2016-06-19","93–89",95,7311,"@fourthqtr","The Block, The Shot, The Stop. A 3–1 comeback sealed.",["Instant Classic","Comeback"]),
+ g("c4","Football","Patriots vs Falcons — Super Bowl LI","2017-02-05","34–28 (OT)",92,6120,"@grid_iron","28–3. That's it. That's the review.",["Comeback","Instant Classic"]),
+ g("c5","Baseball","Cubs vs Indians — 2016 World Series Game 7","2016-11-02","8–7 (10 inn)",93,5488,"@ninth_inning","A 108-year wait, a rain delay, extra innings. Cinema.",["Instant Classic","Thriller"]),
+ g("c6","Hockey","Blues vs Bruins — 2019 Cup Final Game 7","2019-06-12","4–1",71,1904,"@blue_line","Historic for St. Louis, but the game itself never got tense.",["Blowout"]),
+ g("c7","Tennis","Federer vs Nadal — 2008 Wimbledon Final","2008-07-06","9–7 in the 5th",96,6650,"@baseliner","Five sets, two rain delays, finished in darkness. Perfect.",["Instant Classic","Thriller"]),
+ g("c8","Soccer","Liverpool vs Barcelona — 2019 UCL Semi Leg 2","2019-05-07","4–0 (agg 4–3)",94,5901,"@touchline","Corner taken quickly. Anfield at maximum volume.",["Comeback","Upset","Instant Classic"]),
+ g("c9","Basketball","Heat vs Spurs — 2013 Finals Game 6","2013-06-18","103–100 (OT)",91,4230,"@fourthqtr","Ray Allen's corner three with the ropes already out.",["Thriller","Comeback"]),
+ g("c10","Football","Bills vs Chiefs — 2022 Divisional Round","2022-01-23","42–36 (OT)",93,5104,"@grid_iron","25 points in the final two minutes. 13 seconds. Unreal.",["Instant Classic","Thriller"]),
+ g("c11","MMA/Boxing","Fury vs Wilder III","2021-10-09","KO R11",89,2811,"@ringside","Five knockdowns between them. A slugfest for the ages.",["Thriller"]),
+ g("c12","Soccer","Man City vs QPR — 2012 PL Final Day","2012-05-13","3–2",90,3377,"@touchline","AGUEROOOO. Title decided in the 94th minute.",["Instant Classic","Thriller"])
+];
+function g(id,sport,matchup,date,score,avg,votes,by,review,tags){
+  return {id,sport,matchup,date,score,avg,votes,by,review,tags,community:true};
+}
+
+/* ---------- state ---------- */
+let state = load();
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){ const s = JSON.parse(raw); if(!Array.isArray(s.favTeams)) s.favTeams=[]; return s; }
+  }catch(e){}
+  return {theme:"light", myRatings:[], communityAdj:{}, favTeams:[]}; // communityAdj: id -> {sum, n} of user votes folded in
+}
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2200); }
+function fmtDate(d){ if(!d) return ""; const dt=new Date(d+"T12:00:00"); return dt.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); }
+function communityAvg(gm){
+  const adj = state.communityAdj[gm.id];
+  if(!adj) return {avg:gm.avg, votes:gm.votes};
+  const sum = gm.avg*gm.votes + adj.sum;
+  const n = gm.votes + adj.n;
+  return {avg: Math.round(sum/n), votes:n};
+}
+
+/* ---------- favorite teams ---------- */
+function isFav(text){
+  return state.favTeams.some(t=> String(text||"").toLowerCase().includes(t.toLowerCase()));
+}
+function star(text){ return isFav(text) ? `<span title="Favorite team" style="color:var(--amber)">★ </span>` : ""; }
+function renderFavChips(){
+  const el = $("#favChips");
+  el.innerHTML = state.favTeams.length
+    ? state.favTeams.map((t,i)=>`<button type="button" class="tag hot" data-fi="${i}" title="Remove ${esc(t)}">${esc(t)} ✕</button>`).join("")
+    : `<span class="meta">No teams yet — add one below.</span>`;
+  el.querySelectorAll("[data-fi]").forEach(b=> b.addEventListener("click", ()=>{
+    state.favTeams.splice(+b.dataset.fi,1); save(); renderFavChips();
+  }));
+}
+function addFavTeam(){
+  const v = $("#favInput").value.trim();
+  if(!v) return;
+  if(state.favTeams.some(t=>t.toLowerCase()===v.toLowerCase())){ toast("Already in your teams"); return; }
+  state.favTeams.push(v); save();
+  $("#favInput").value=""; renderFavChips(); toast("★ "+v+" added");
+}
+$("#favAdd").addEventListener("click", addFavTeam);
+$("#favInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); addFavTeam(); } });
+
+/* ---------- theme ---------- */
+function applyTheme(){ document.documentElement.setAttribute("data-theme", state.theme); }
+$("#themeBtn").addEventListener("click", ()=>{ state.theme = state.theme==="dark"?"light":"dark"; applyTheme(); save(); });
+
+/* ---------- tabs ---------- */
+let currentView = "feed";
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click", ()=> switchView(t.dataset.view));
+});
+function switchView(v){
+  currentView = v;
+  document.querySelectorAll(".tab").forEach(t=> t.setAttribute("aria-selected", String(t.dataset.view===v)));
+  document.querySelectorAll(".view").forEach(s=> s.classList.toggle("active", s.id==="view-"+v));
+  if(v==="feed") renderFeed();
+  if(v==="today"){ renderTodayLeagues(); loadToday(); }
+  if(v==="rankings") renderRankings();
+  if(v==="log") renderMyLog();
+  window.scrollTo({top:0});
+}
+
+/* ---------- filters ---------- */
+let feedFilter="All", rankFilter="All", feedTeamsOnly=false;
+function renderFilterBar(el, current, onPick){
+  el.innerHTML = SPORTS.map(s=>`<button class="fbtn" aria-pressed="${s===current}" data-s="${esc(s)}">${esc(s)}</button>`).join("");
+  el.querySelectorAll(".fbtn").forEach(b=> b.addEventListener("click", ()=> onPick(b.dataset.s)));
+}
+
+/* ---------- card templates ---------- */
+function gradeCls(n){ return n>=75 ? "good" : n>=45 ? "" : "bad"; } /* green ≥75, amber 45–74, red <45 */
+function chip(n, label){ return `<div class="chip sm ${gradeCls(n)}"><span class="n">${n}</span><span class="l">${label}</span></div>`; }
+function tagHtml(tags){
+  if(!tags||!tags.length) return "";
+  return `<div class="tags">${tags.map(t=>`<span class="tag ${t==="Instant Classic"?"hot":""}">${esc(t)}</span>`).join("")}</div>`;
+}
+function communityCard(gm){
+  const {avg,votes} = communityAvg(gm);
+  return `<article class="card">
+    ${chip(avg,"CROWD")}
+    <div class="body">
+      <div class="matchup">${star(gm.matchup)}${esc(gm.matchup)}</div>
+      <div class="meta">${esc(gm.sport)} · ${fmtDate(gm.date)}${gm.score?` · FT ${esc(gm.score)}`:""} · <span class="votes">${votes.toLocaleString()} ratings</span></div>
+      ${gm.review?`<p class="review">"${esc(gm.review)}"</p><div class="byline">— ${esc(gm.by)}</div>`:""}
+      ${tagHtml(gm.tags)}
+      <div class="cardactions"><button class="linkbtn" data-rateid="${gm.id}">Rate this game</button></div>
+    </div>
+  </article>`;
+}
+function myCard(r){
+  return `<article class="card">
+    ${chip(r.rating,"YOU")}
+    <div class="body">
+      <div class="matchup">${star(r.matchup)}${esc(r.matchup)}</div>
+      <div class="meta">${esc(r.sport)} · ${fmtDate(r.date)}${r.score?` · FT ${esc(r.score)}`:""}</div>
+      ${r.review?`<p class="review">"${esc(r.review)}"</p>`:""}
+      ${tagHtml(r.tags)}
+      <div class="cardactions">
+        <button class="linkbtn" data-edit="${r.uid}">Edit</button>
+        <button class="linkbtn danger" data-del="${r.uid}">Delete</button>
+      </div>
+    </div>
+  </article>`;
+}
+
+/* ---------- renders ---------- */
+function renderFeed(){
+  renderFilterBar($("#feedFilters"), feedFilter, s=>{feedFilter=s; renderFeed();});
+  const tbtn = document.createElement("button");
+  tbtn.className="fbtn"; tbtn.textContent="★ My teams";
+  tbtn.setAttribute("aria-pressed", String(feedTeamsOnly));
+  tbtn.addEventListener("click", ()=>{
+    if(!state.favTeams.length){ toast("Add favorite teams in My Log first"); return; }
+    feedTeamsOnly=!feedTeamsOnly; renderFeed();
+  });
+  $("#feedFilters").appendChild(tbtn);
+  const mine = state.myRatings.map(r=>({...r,_mine:true}));
+  let items = [...mine, ...SEED].filter(x=> feedFilter==="All" || x.sport===feedFilter);
+  if(feedTeamsOnly) items = items.filter(x=> isFav(x.matchup));
+  items.sort((a,b)=> (b.loggedAt||b.date).localeCompare(a.loggedAt||a.date));
+  $("#feedList").innerHTML = items.length
+    ? items.map(x=> x._mine? myCard(x) : communityCard(x)).join("")
+    : `<div class="empty">${feedTeamsOnly? "No games featuring your teams yet — rate one!" : "No games in this sport yet. Be the first — hit “+ Rate a Game”."}</div>`;
+  bindCardActions($("#feedList"));
+}
+function renderRankings(){
+  renderFilterBar($("#rankFilters"), rankFilter, s=>{rankFilter=s; renderRankings();});
+  const community = SEED.map(gm=>{ const {avg,votes}=communityAvg(gm); return {matchup:gm.matchup,sport:gm.sport,date:gm.date,score:gm.score,avg,votes,id:gm.id}; });
+  const mineOnly = state.myRatings.filter(r=>!r.linkedTo).map(r=>({matchup:r.matchup,sport:r.sport,date:r.date,score:r.score,avg:r.rating,votes:1,id:null}));
+  let rows = [...community, ...mineOnly].filter(x=> rankFilter==="All"||x.sport===rankFilter);
+  rows.sort((a,b)=> b.avg-a.avg || b.votes-a.votes);
+  $("#rankList").innerHTML = rows.length? rows.map((x,i)=>`
+    <div class="rankrow">
+      <div class="rank">${i+1}</div>
+      <div class="body">
+        <div class="matchup">${star(x.matchup)}${esc(x.matchup)}</div>
+        <div class="meta">${esc(x.sport)} · ${fmtDate(x.date)}${x.score?` · FT ${esc(x.score)}`:""} · <span class="votes">${x.votes.toLocaleString()} rating${x.votes===1?"":"s"}</span></div>
+      </div>
+      ${chip(x.avg,"AVG")}
+    </div>`).join("") : `<div class="empty">Nothing ranked in this sport yet.</div>`;
+}
+function renderMyLog(){
+  const items = [...state.myRatings].sort((a,b)=> (b.loggedAt||"").localeCompare(a.loggedAt||""));
+  $("#myList").innerHTML = items.length
+    ? items.map(myCard).join("")
+    : `<div class="empty">Your log is empty.<br><br><button class="primary" data-goto="rate">Rate your first game</button></div>`;
+  bindCardActions($("#myList"));
+  const go = $("#myList [data-goto]");
+  if(go) go.addEventListener("click", ()=> switchView("rate"));
+}
+function bindCardActions(root){
+  root.querySelectorAll("[data-rateid]").forEach(b=> b.addEventListener("click", ()=> prefillFromCommunity(b.dataset.rateid)));
+  root.querySelectorAll("[data-edit]").forEach(b=> b.addEventListener("click", ()=> startEdit(b.dataset.edit)));
+  root.querySelectorAll("[data-del]").forEach(b=> b.addEventListener("click", ()=>{
+    const r = state.myRatings.find(x=>x.uid===b.dataset.del);
+    if(r && confirm(`Delete your rating for “${r.matchup}”?`)){
+      if(r.linkedTo && state.communityAdj[r.linkedTo]){
+        state.communityAdj[r.linkedTo].sum -= r.rating;
+        state.communityAdj[r.linkedTo].n -= 1;
+        if(state.communityAdj[r.linkedTo].n<=0) delete state.communityAdj[r.linkedTo];
+      }
+      state.myRatings = state.myRatings.filter(x=>x.uid!==r.uid);
+      save(); renderMyLog(); toast("Rating deleted");
+    }
+  }));
+}
+
+/* ---------- rating form ---------- */
+let pickedTags = new Set();
+let editingUid = null;
+let linkedTo = null;
+function renderTagPick(){
+  $("#tagPick").innerHTML = TAGS.map(t=>`<button type="button" class="fbtn" aria-pressed="${pickedTags.has(t)}">${esc(t)}</button>`).join("");
+  $("#tagPick").querySelectorAll(".fbtn").forEach(b=> b.addEventListener("click", ()=>{
+    const t=b.textContent;
+    pickedTags.has(t)? pickedTags.delete(t) : pickedTags.add(t);
+    renderTagPick();
+  }));
+}
+function setBigChip(v){
+  $("#ratingNum").textContent = v;
+  $("#bigChip").className = "chip big " + gradeCls(+v);
+}
+$("#fRating").addEventListener("input", e=> setBigChip(e.target.value));
+
+function resetForm(){
+  $("#rateForm").reset();
+  $("#fRating").value=75; setBigChip(75);
+  pickedTags = new Set(); renderTagPick();
+  editingUid=null; linkedTo=null;
+  $("#rateTitle").textContent="Rate a Game";
+  $("#cancelEdit").hidden=true;
+  $("#fMatchup").disabled=false; $("#fSport").disabled=false; $("#fDate").disabled=false;
+}
+function prefillFromCommunity(id){
+  const gm = SEED.find(x=>x.id===id); if(!gm) return;
+  resetForm();
+  linkedTo = id;
+  $("#fSport").value=gm.sport; $("#fDate").value=gm.date;
+  $("#fMatchup").value=gm.matchup; $("#fScore").value=gm.score||"";
+  $("#fMatchup").disabled=true; $("#fSport").disabled=true; $("#fDate").disabled=true;
+  $("#rateTitle").textContent="Rate: "+gm.matchup;
+  switchView("rate");
+}
+function startEdit(uid){
+  const r = state.myRatings.find(x=>x.uid===uid); if(!r) return;
+  resetForm();
+  editingUid=uid; linkedTo=r.linkedTo||null;
+  $("#fSport").value=r.sport; $("#fDate").value=r.date;
+  $("#fMatchup").value=r.matchup; $("#fScore").value=r.score||"";
+  $("#fRating").value=r.rating; setBigChip(r.rating);
+  $("#fReview").value=r.review||"";
+  pickedTags = new Set(r.tags||[]); renderTagPick();
+  $("#rateTitle").textContent="Edit rating";
+  $("#cancelEdit").hidden=false;
+  switchView("rate");
+}
+$("#cancelEdit").addEventListener("click", ()=>{ resetForm(); switchView("log"); });
+
+$("#rateForm").addEventListener("submit", e=>{
+  e.preventDefault();
+  const rating = parseInt($("#fRating").value,10);
+  const entry = {
+    uid: editingUid || ("u"+Date.now()+Math.random().toString(36).slice(2,6)),
+    sport: $("#fSport").value,
+    date: $("#fDate").value,
+    matchup: $("#fMatchup").value.trim(),
+    score: $("#fScore").value.trim(),
+    rating,
+    review: $("#fReview").value.trim(),
+    tags: [...pickedTags],
+    linkedTo,
+    loggedAt: new Date().toISOString()
+  };
+  if(!entry.matchup || !entry.date){ toast("Fill in the matchup and date"); return; }
+
+  if(editingUid){
+    const old = state.myRatings.find(x=>x.uid===editingUid);
+    if(old && old.linkedTo && state.communityAdj[old.linkedTo]){
+      state.communityAdj[old.linkedTo].sum += (rating - old.rating);
+    }
+    state.myRatings = state.myRatings.map(x=> x.uid===editingUid? entry : x);
+    toast("Rating updated");
+  }else{
+    state.myRatings.push(entry);
+    if(linkedTo){
+      const adj = state.communityAdj[linkedTo] || {sum:0,n:0};
+      adj.sum+=rating; adj.n+=1;
+      state.communityAdj[linkedTo]=adj;
+    }
+    toast("Rating posted — "+rating+" pts");
+  }
+  save(); resetForm(); switchView("log");
+});
+
+/* ---------- import / export ---------- */
+$("#exportBtn").addEventListener("click", ()=>{
+  const blob = new Blob([JSON.stringify({myRatings:state.myRatings, communityAdj:state.communityAdj}, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "boxscore-export.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$("#importBtn").addEventListener("click", ()=> $("#importFile").click());
+$("#importFile").addEventListener("change", e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    try{
+      const data = JSON.parse(rd.result);
+      if(Array.isArray(data.myRatings)){
+        state.myRatings = data.myRatings;
+        state.communityAdj = data.communityAdj || {};
+        save(); renderMyLog(); toast("Import complete");
+      } else toast("That file doesn't look like a Boxscore export");
+    }catch(err){ toast("Couldn't read that file"); }
+  };
+  rd.readAsText(f);
+  e.target.value="";
+});
+
+/* ---------- ESPN scoreboard (shared by Today tab + game finder) ---------- */
+const LEAGUES = [
+  {label:"NFL", sport:"Football", path:"football/nfl"},
+  {label:"College Football", sport:"Football", path:"football/college-football"},
+  {label:"NBA", sport:"Basketball", path:"basketball/nba"},
+  {label:"College Basketball (M)", sport:"Basketball", path:"basketball/mens-college-basketball"},
+  {label:"MLB", sport:"Baseball", path:"baseball/mlb"},
+  {label:"NHL", sport:"Hockey", path:"hockey/nhl"},
+  {label:"Premier League", sport:"Soccer", path:"soccer/eng.1"},
+  {label:"Champions League", sport:"Soccer", path:"soccer/uefa.champions"},
+  {label:"La Liga", sport:"Soccer", path:"soccer/esp.1"},
+  {label:"MLS", sport:"Soccer", path:"soccer/usa.1"}
+];
+async function fetchGames(lg, dateStr){
+  const ymd = dateStr.replace(/-/g,"");
+  const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${lg.path}/scoreboard?dates=${ymd}`);
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const data = await res.json();
+  return data.events || [];
+}
+function evParts(ev){
+  const comp = (ev.competitions||[])[0] || {};
+  const cs = comp.competitors || [];
+  const away = cs.find(c=>c.homeAway==="away") || cs[1] || {};
+  const home = cs.find(c=>c.homeAway==="home") || cs[0] || {};
+  const done = !!ev.status?.type?.completed;
+  const live = ev.status?.type?.state === "in";
+  const detail = ev.status?.type?.shortDetail || "Scheduled";
+  return {
+    away, home, done, live,
+    aShort: away.team?.shortDisplayName || away.team?.displayName || "Away",
+    hShort: home.team?.shortDisplayName || home.team?.displayName || "Home",
+    aFull: away.team?.displayName || "Away",
+    hFull: home.team?.displayName || "Home",
+    status: done ? `${away.score}–${home.score}`
+          : live ? `${away.score ?? 0}–${home.score ?? 0} · ${detail}`
+          : detail,
+    note: comp.notes?.[0]?.headline
+  };
+}
+function prefillFromEspn(ev, lg, dateStr){
+  const p = evParts(ev);
+  resetForm();
+  $("#fSport").value = lg.sport;
+  $("#fDate").value = dateStr;
+  $("#fMatchup").value = `${p.aFull} vs ${p.hFull}${p.note?` — ${p.note}`:` — ${lg.label}`}`;
+  $("#fScore").value = p.done ? `${p.away.score}–${p.home.score}` : "";
+  toast("Game loaded — set your score");
+  switchView("rate");
+  $("#fRating").focus();
+}
+function gameRows(events, lg, dateStr, container){
+  container.innerHTML = events.map((ev,i)=>{
+    const p = evParts(ev);
+    return `<button type="button" class="gres" data-i="${i}">
+      <span class="m">${star(p.aFull+" "+p.hFull)}${esc(p.aShort)} vs ${esc(p.hShort)}</span>
+      <span class="s">${p.live?`<span style="color:#FF5A4E">●</span> `:""}${esc(p.status)}</span>
+      <span class="linkbtn">Rate</span>
+    </button>`;
+  }).join("");
+  container.querySelectorAll(".gres").forEach(btn=> btn.addEventListener("click", ()=> prefillFromEspn(events[+btn.dataset.i], lg, dateStr)));
+}
+
+/* ---------- Today tab ---------- */
+let todayLg = 0;
+function renderTodayLeagues(){
+  const el = $("#todayLeagues");
+  el.innerHTML = LEAGUES.map((l,i)=>`<button class="fbtn" aria-pressed="${i===todayLg}" data-i="${i}">${esc(l.label)}</button>`).join("");
+  el.querySelectorAll(".fbtn").forEach(b=> b.addEventListener("click", ()=>{ todayLg=+b.dataset.i; renderTodayLeagues(); loadToday(); }));
+}
+async function loadToday(){
+  const lg = LEAGUES[todayLg];
+  const d = $("#todayDate").value || new Date().toISOString().slice(0,10);
+  const out = $("#todayList");
+  out.innerHTML = `<div class="finderr">Checking the ${esc(lg.label)} scoreboard…</div>`;
+  try{
+    const events = await fetchGames(lg, d);
+    if(!events.length){ out.innerHTML = `<div class="empty">No ${esc(lg.label)} games on ${fmtDate(d)}. Try another league or date.</div>`; return; }
+    gameRows(events, lg, d, out);
+  }catch(err){
+    out.innerHTML = `<div class="empty">Couldn't reach the scoreboard right now. Try again in a moment, or rate the game manually in the Rate tab.</div>`;
+  }
+}
+$("#todayDate").value = new Date().toISOString().slice(0,10);
+$("#todayDate").addEventListener("change", loadToday);
+
+/* ---------- game finder (Rate tab) ---------- */
+$("#finderLeague").innerHTML = LEAGUES.map((l,i)=>`<option value="${i}">${l.label}</option>`).join("");
+$("#finderDate").value = new Date(Date.now()-86400000).toISOString().slice(0,10); // default: yesterday
+
+$("#finderBtn").addEventListener("click", async ()=>{
+  const lg = LEAGUES[+$("#finderLeague").value];
+  const d = $("#finderDate").value;
+  const out = $("#finderResults");
+  if(!d){ out.innerHTML = `<div class="finderr">Pick a date first.</div>`; return; }
+  out.innerHTML = `<div class="finderr">Checking the scoreboard…</div>`;
+  try{
+    const events = await fetchGames(lg, d);
+    if(!events.length){ out.innerHTML = `<div class="finderr">No ${esc(lg.label)} games on ${fmtDate(d)}. Try another date, or enter the game manually below.</div>`; return; }
+    gameRows(events, lg, d, out);
+  }catch(err){
+    out.innerHTML = `<div class="finderr">Couldn't reach the scoreboard (the free ESPN feed occasionally hiccups). Enter the game manually below.</div>`;
+  }
+});
+
+/* ---------- init ---------- */
+applyTheme();
+renderTagPick();
+renderFavChips();
+renderFeed();
+})();
+</script>
+</body>
+</html>
