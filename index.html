@@ -44,6 +44,22 @@ nav{display:flex; gap:2px; margin-left:auto}
 .tab:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--turf); outline-offset:2px}
 .iconbtn{font-size:16px; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--card)}
 
+/* ---------- mobile ---------- */
+@media(max-width:640px){
+  .hwrap{flex-wrap:wrap; padding:10px 12px; gap:6px}
+  .logo{font-size:19px}
+  #themeBtn{margin-left:auto}
+  nav{order:3; width:100%; margin-left:0; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap; font-size:13px; padding:6px 11px}
+  main{padding:18px 12px 70px}
+  .card,.rankrow{padding:13px}
+  .rank{width:30px; font-size:19px}
+  .chip{min-width:58px}
+  .chip .n{font-size:22px}
+  h1{font-size:28px}
+}
+
 /* ---------- layout ---------- */
 main{max-width:960px; margin:0 auto; padding:24px 16px 80px}
 .view{display:none}
@@ -273,7 +289,7 @@ footer{border-top:1px solid var(--line); margin-top:40px; padding-top:16px; font
     </form>
   </section>
 
-  <footer>BOXSCORE · MVP v0.6 · Data lives in your browser (localStorage). Nothing is sent to a server yet.
+  <footer>BOXSCORE · MVP v0.8 · Data lives in your browser (localStorage). Nothing is sent to a server yet.
     <br><br><a href="https://forms.gle/7qw8BFdvUvGVKior8" target="_blank" rel="noopener" id="fbLink" style="font-weight:600">Give feedback →</a>
   </footer>
 </main>
@@ -620,13 +636,17 @@ function evParts(ev){
   const away = cs.find(c=>c.homeAway==="away") || cs[1] || {};
   const home = cs.find(c=>c.homeAway==="home") || cs[0] || {};
   const done = !!ev.status?.type?.completed;
+  const live = ev.status?.type?.state === "in";
+  const detail = ev.status?.type?.shortDetail || "Scheduled";
   return {
-    away, home, done,
+    away, home, done, live,
     aShort: away.team?.shortDisplayName || away.team?.displayName || "Away",
     hShort: home.team?.shortDisplayName || home.team?.displayName || "Home",
     aFull: away.team?.displayName || "Away",
     hFull: home.team?.displayName || "Home",
-    status: done ? `${away.score}–${home.score}` : (ev.status?.type?.shortDetail || "Scheduled"),
+    status: done ? `${away.score}–${home.score}`
+          : live ? `${away.score ?? 0}–${home.score ?? 0} · ${detail}`
+          : detail,
     note: comp.notes?.[0]?.headline
   };
 }
@@ -646,7 +666,7 @@ function gameRows(events, lg, dateStr, container){
     const p = evParts(ev);
     return `<button type="button" class="gres" data-i="${i}">
       <span class="m">${star(p.aFull+" "+p.hFull)}${esc(p.aShort)} vs ${esc(p.hShort)}</span>
-      <span class="s">${esc(p.status)}</span>
+      <span class="s">${p.live?`<span style="color:#FF5A4E">●</span> `:""}${esc(p.status)}</span>
       <span class="linkbtn">Rate</span>
     </button>`;
   }).join("");
